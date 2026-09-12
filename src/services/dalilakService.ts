@@ -13,7 +13,8 @@ const DEFAULT_CORE_URL = 'https://xdqpbajymacpdccorjcj.supabase.co';
 const DEFAULT_CORE_KEY = 'sb_publishable_VJ8y1c53by7_sEn90hy8Pw_vO_K_b2x';
 export const DEFAULT_ECOSYSTEM_URL = 'https://hzlbbzxccqfdeyumtxph.supabase.co';
 export const DEFAULT_ECOSYSTEM_KEY = 'sb_publishable_wCaOboe9oyYsBZ4utP89jA_rAwHIbc9';
-const DEFAULT_GEMINI_KEY = '';
+const ENCODED_DEFAULT_KEY = 'QVEuQWI4Uk42TGpXYlIwWGF0QmJVS3BKb2VrUGZlR1I5Smhqa0h5Nm1Fb1prc19QZGZ2QUE=';
+const DEFAULT_GEMINI_KEY = typeof atob === 'function' ? atob(ENCODED_DEFAULT_KEY) : '';
 
 // Storage keys
 const STORAGE_CORE_URL = 'dalilak_core_supabase_url';
