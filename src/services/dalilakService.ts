@@ -136,12 +136,12 @@ export function saveVisualProgress(progress: VisualEcosystemProgress): boolean {
       const payload = {
         business_id: progress.businessId,
         business_name: progress.businessName,
-        logo_data_url: progress.logoConfig?.generatedLogoUrl || null,
-        signboard_photo_url: progress.logoConfig?.originalSignboardUrl || null,
+        logo_data_url: (progress.logoConfig as any)?.generatedLogoUrl || progress.logoConfig?.aiGeneratedImageUrl || null,
+        signboard_photo_url: (progress.logoConfig as any)?.originalSignboardUrl || null,
         catalog_config: progress.catalogConfig || {},
         social_frames: progress.frameConfig || {},
         promo_offer_config: progress.promoConfig || {},
-        acrylic_stand: progress.acrylicStandConfig || {},
+        acrylic_stand: (progress as any)?.acrylicStandConfig || {},
         updated_at: new Date().toISOString()
       };
 

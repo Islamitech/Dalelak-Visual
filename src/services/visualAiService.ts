@@ -9,8 +9,8 @@ import {
   LogoFontFamily
 } from '../types';
 
-export const PRIMARY_GEMINI_MODEL = 'gemini-3.6-flash';
-export const FALLBACK_GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+export const PRIMARY_GEMINI_MODEL = 'gemini-3.5-flash';
+export const FALLBACK_GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-flash-lite-latest'];
 
 export interface SignboardAnalysisResult {
   businessNameAr: string;
@@ -148,7 +148,8 @@ async function executeGeminiPrompt(
         }],
         generationConfig: {
           responseMimeType: 'application/json',
-          temperature: 0.75
+          temperature: 0.75,
+          thinkingConfig: { thinkingBudget: 0 },
         }
       };
 
