@@ -11,6 +11,9 @@ import {
 // Default Supabase configuration for Dalilak Core Production
 const DEFAULT_CORE_URL = 'https://xdqpbajymacpdccorjcj.supabase.co';
 const DEFAULT_CORE_KEY = 'sb_publishable_VJ8y1c53by7_sEn90hy8Pw_vO_K_b2x';
+export const DEFAULT_ECOSYSTEM_URL = 'https://hzlbbzxccqfdeyumtxph.supabase.co';
+export const DEFAULT_ECOSYSTEM_KEY = 'sb_publishable_wCaOboe9oyYsBZ4utP89jA_rAwHIbc9';
+const DEFAULT_GEMINI_KEY = '';
 
 // Storage keys
 const STORAGE_CORE_URL = 'dalilak_core_supabase_url';
@@ -23,12 +26,12 @@ const STORAGE_PROGRESS_PREFIX = 'dalilak_visual_progress_';
 export function getServerConfig(): ServerConfig {
   const coreUrl = localStorage.getItem(STORAGE_CORE_URL) || (import.meta as any).env?.VITE_DALILAK_SUPABASE_URL || DEFAULT_CORE_URL;
   const coreKey = localStorage.getItem(STORAGE_CORE_KEY) || (import.meta as any).env?.VITE_DALILAK_SUPABASE_ANON_KEY || DEFAULT_CORE_KEY;
-  const ecosystemUrl = localStorage.getItem(STORAGE_ECO_URL) || (import.meta as any).env?.VITE_ECOSYSTEM_SUPABASE_URL || '';
-  const ecosystemKey = localStorage.getItem(STORAGE_ECO_KEY) || (import.meta as any).env?.VITE_ECOSYSTEM_SUPABASE_KEY || '';
+  const ecosystemUrl = localStorage.getItem(STORAGE_ECO_URL) || (import.meta as any).env?.VITE_ECOSYSTEM_SUPABASE_URL || DEFAULT_ECOSYSTEM_URL;
+  const ecosystemKey = localStorage.getItem(STORAGE_ECO_KEY) || (import.meta as any).env?.VITE_ECOSYSTEM_SUPABASE_KEY || DEFAULT_ECOSYSTEM_KEY;
   const geminiKey = localStorage.getItem(STORAGE_GEMINI_KEY) || 
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || 
     (typeof process !== 'undefined' && (process as any).env?.GEMINI_API_KEY) || 
-    '';
+    DEFAULT_GEMINI_KEY;
 
   return {
     coreUrl: coreUrl.trim().replace(/\/+$/, ''),
@@ -124,6 +127,35 @@ export function saveVisualProgress(progress: VisualEcosystemProgress): boolean {
       ...progress,
       lastUpdated: new Date().toISOString()
     }));
+
+    // Asynchronously sync to Ecosystem Supabase Server (hzlbbzxccqfdeyumtxph)
+    const { ecosystemUrl, ecosystemKey } = getServerConfig();
+    if (ecosystemUrl && ecosystemKey) {
+      const endpoint = `${ecosystemUrl}/rest/v1/visual_assets`;
+      const payload = {
+        business_id: progress.businessId,
+        business_name: progress.businessName,
+        logo_data_url: progress.logoConfig?.generatedLogoUrl || null,
+        signboard_photo_url: progress.logoConfig?.originalSignboardUrl || null,
+        catalog_config: progress.catalogConfig || {},
+        social_frames: progress.frameConfig || {},
+        promo_offer_config: progress.promoConfig || {},
+        acrylic_stand: progress.acrylicStandConfig || {},
+        updated_at: new Date().toISOString()
+      };
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'apikey': ecosystemKey,
+          'Authorization': `Bearer ${ecosystemKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(payload)
+      }).catch(err => console.warn('Sync to visual_assets failed:', err));
+    }
+
     return true;
   } catch (e) {
     console.error('Failed to save progress:', e);

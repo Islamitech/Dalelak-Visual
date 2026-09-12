@@ -109,14 +109,21 @@ export const WorkspaceSplitView: React.FC<WorkspaceSplitViewProps> = ({
 
   const handleQuickDownload = () => {
     if (activeTab === 'logo') {
-      const svgStr = generateVectorLogoSvg(logoConfig, 1000);
-      const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `شعار_${(business?.name_ar || 'دليلك').replace(/\s+/g, '_')}.svg`;
-      link.click();
-      URL.revokeObjectURL(url);
+      if (logoConfig.logoMode === 'ai_image' && logoConfig.aiGeneratedImageUrl) {
+        const link = document.createElement('a');
+        link.href = logoConfig.aiGeneratedImageUrl;
+        link.download = `شعار_الذكاء_الاصطناعي_${(business?.name_ar || 'دليلك').replace(/\s+/g, '_')}.jpg`;
+        link.click();
+      } else {
+        const svgStr = generateVectorLogoSvg(logoConfig, 1000);
+        const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `شعار_${(business?.name_ar || 'دليلك').replace(/\s+/g, '_')}.svg`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
     } else if (canvasRef.current) {
       exportCanvasAsPng(canvasRef.current, `تصميم_${(business?.name_ar || 'دليلك').replace(/\s+/g, '_')}`);
     }
@@ -266,10 +273,10 @@ export const WorkspaceSplitView: React.FC<WorkspaceSplitViewProps> = ({
             {/* Canvas Viewport */}
             <div className="p-4 sm:p-8 bg-slate-100/70 flex items-center justify-center min-h-[460px] overflow-auto">
               
-              {/* TAB 1: SVG VECTOR LOGO PREVIEW */}
+              {/* TAB 1: SVG / AI LOGO PREVIEW */}
               {activeTab === 'logo' ? (
                 <div
-                  className={`w-full max-w-[420px] aspect-square rounded-2xl p-6 flex flex-col items-center justify-center shadow-md transition-all duration-200 border ${
+                  className={`w-full max-w-[420px] aspect-square rounded-2xl p-4 flex flex-col items-center justify-center shadow-md transition-all duration-200 border ${
                     logoBgPreview === 'white'
                       ? 'bg-white border-slate-200'
                       : logoBgPreview === 'dark'
@@ -277,12 +284,25 @@ export const WorkspaceSplitView: React.FC<WorkspaceSplitViewProps> = ({
                       : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200'
                   }`}
                 >
-                  <div
-                    className="w-full h-full flex items-center justify-center"
-                    dangerouslySetInnerHTML={{
-                      __html: generateVectorLogoSvg(logoConfig, 380)
-                    }}
-                  />
+                  {logoConfig.logoMode === 'ai_image' && logoConfig.aiGeneratedImageUrl ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center relative group">
+                      <img
+                        src={logoConfig.aiGeneratedImageUrl}
+                        alt="AI Logo"
+                        className="w-full h-full object-contain rounded-xl shadow-xs"
+                      />
+                      <div className="absolute top-2 right-2 bg-indigo-600/95 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                        <span>Imagen 3 • فائق الدقة</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="w-full h-full flex items-center justify-center"
+                      dangerouslySetInnerHTML={{
+                        __html: generateVectorLogoSvg(logoConfig, 380)
+                      }}
+                    />
+                  )}
                 </div>
               ) : (
                 /* TAB 2, 3, 4: HTML5 CANVAS PREVIEW */

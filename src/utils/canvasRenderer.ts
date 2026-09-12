@@ -230,42 +230,55 @@ async function drawCanvasLogo(
   placement: string
 ) {
   try {
-    const svgStr = generateVectorLogoSvg(logoConfig, 220);
-    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-    const logoImg = await loadImage(url);
+    let logoImg: HTMLImageElement;
+    let cleanupUrl: string | null = null;
 
-    let x = width - 200;
+    if (logoConfig.aiGeneratedImageUrl) {
+      logoImg = await loadImage(logoConfig.aiGeneratedImageUrl);
+    } else {
+      const svgStr = generateVectorLogoSvg(logoConfig, 220);
+      const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      cleanupUrl = URL.createObjectURL(svgBlob);
+      logoImg = await loadImage(cleanupUrl);
+    }
+
+    let x = width - 210;
     let y = 45;
 
     if (placement === 'top_left') {
       x = 55;
       y = 45;
     } else if (placement === 'top_center') {
-      x = (width - 150) / 2;
+      x = (width - 175) / 2;
       y = 45;
     }
 
-    // Circular white background for logo clarity
+    // Pill container for logo clarity
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
     ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.roundRect(x - 10, y - 8, 160, 80, 20);
+    ctx.roundRect(x - 10, y - 8, 185, 84, 18);
     ctx.fill();
 
-    // Draw business name next to logo if horizontal
-    ctx.drawImage(logoImg, x, y, 64, 64);
+    // Draw logo image with rounded corners
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, y, 68, 68, 12);
+    ctx.clip();
+    ctx.drawImage(logoImg, x, y, 68, 68);
+    ctx.restore();
 
     ctx.fillStyle = '#0f172a';
-    ctx.font = '800 19px "Cairo", sans-serif';
+    ctx.font = '800 18px "Cairo", sans-serif';
     ctx.textAlign = 'right';
     ctx.direction = 'rtl';
-    ctx.fillText(businessName, x + 145, y + 36, 80);
+    const shortName = businessName.length > 14 ? businessName.slice(0, 13) + '..' : businessName;
+    ctx.fillText(shortName, x + 168, y + 42);
 
     ctx.restore();
-    URL.revokeObjectURL(url);
+    if (cleanupUrl) URL.revokeObjectURL(cleanupUrl);
   } catch (e) {
     console.warn('Failed to render logo to canvas:', e);
   }

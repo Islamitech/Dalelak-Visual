@@ -11,7 +11,7 @@ import {
   FileText
 } from 'lucide-react';
 import { MenuCatalogConfig, MenuCatalogItem, DalilakBusiness } from '../types';
-import { getContextualFallbackAnalysis } from '../services/visualAiService';
+import { generateAiMenuItemsWithGemini } from '../services/visualAiService';
 
 interface MenuCatalogPanelProps {
   config: MenuCatalogConfig;
@@ -25,6 +25,8 @@ export const MenuCatalogPanel: React.FC<MenuCatalogPanelProps> = ({
   business
 }) => {
   const [loadingAi, setLoadingAi] = useState(false);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
 
   const handleAddItem = () => {
     const newItem: MenuCatalogItem = {
@@ -56,19 +58,26 @@ export const MenuCatalogPanel: React.FC<MenuCatalogPanelProps> = ({
     });
   };
 
-  const handleSuggestAiItems = () => {
+  const handleSuggestAiItems = async () => {
     setLoadingAi(true);
-    setTimeout(() => {
-      const analysis = getContextualFallbackAnalysis(
-        business?.name_ar || '',
+    setAiErrorMessage(null);
+    setAiSuccessMessage(null);
+    try {
+      const { items, modelUsed } = await generateAiMenuItemsWithGemini(
+        business?.name_ar || 'النشاط التجاري',
         business?.category || 'عام'
       );
       onChange({
         ...config,
-        items: analysis.suggestedMenuItems || config.items
+        items
       });
+      setAiSuccessMessage(`تم توليد ${items.length} أصناف منيو واقعية ومميزة بنجاح عبر (${modelUsed})`);
+    } catch (e: any) {
+      console.error('Failed to generate AI menu:', e);
+      setAiErrorMessage(e.message || 'تعذر توليد قائمة المنيو بالذكاء الاصطناعي');
+    } finally {
       setLoadingAi(false);
-    }, 400);
+    }
   };
 
   return (
@@ -134,6 +143,27 @@ export const MenuCatalogPanel: React.FC<MenuCatalogPanelProps> = ({
         </div>
       </div>
 
+      {/* AI Success / Error Alerts */}
+      {aiSuccessMessage && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between">
+          <span className="text-[10px] bg-emerald-200/80 px-2 py-0.5 rounded">Gemini 3.6 Flash</span>
+          <div className="flex items-center gap-1.5">
+            <span>{aiSuccessMessage}</span>
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+          </div>
+        </div>
+      )}
+
+      {aiErrorMessage && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs font-bold space-y-1">
+          <div className="flex items-center justify-end gap-1.5 text-red-700">
+            <span>تنبيه الاتصال بالذكاء الاصطناعي</span>
+            <span>⚠️</span>
+          </div>
+          <p className="text-[11px] text-red-600 font-normal">{aiErrorMessage}</p>
+        </div>
+      )}
+
       {/* AI Fill & Actions */}
       <div className="flex items-center gap-2">
         <button
@@ -147,7 +177,7 @@ export const MenuCatalogPanel: React.FC<MenuCatalogPanelProps> = ({
           ) : (
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
           )}
-          <span>اقتراح بنود ذكية حسب النشاط ({business?.category || 'عام'})</span>
+          <span>توليد بنود ذكية ومميزة عبر Gemini 3.6 Flash ({business?.category || 'عام'})</span>
         </button>
 
         <button

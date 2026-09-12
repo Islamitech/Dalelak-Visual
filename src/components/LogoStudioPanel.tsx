@@ -8,7 +8,8 @@ import {
   Sliders, 
   Image as ImageIcon,
   Check,
-  ChevronDown
+  ChevronDown,
+  Upload
 } from 'lucide-react';
 import { 
   VectorLogoConfig, 
@@ -22,7 +23,7 @@ import {
   LOGO_COLOR_PALETTES, 
   generateVectorLogoSvg 
 } from '../utils/vectorLogoPresets';
-import { analyzeSignboardWithGemini } from '../services/visualAiService';
+import { analyzeSignboardWithGemini, generateAiLogoImageWithImagen } from '../services/visualAiService';
 
 interface LogoStudioPanelProps {
   business: DalilakBusiness | null;
@@ -38,7 +39,12 @@ export const LogoStudioPanel: React.FC<LogoStudioPanelProps> = ({
   onApplyAiAnalysis
 }) => {
   const [analyzing, setAnalyzing] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+  const [customImagePrompt, setCustomImagePrompt] = useState<string>('');
+  const [showPromptExpander, setShowPromptExpander] = useState(false);
 
   const businessPhotos = Array.isArray(business?.photos) ? business.photos : [];
   const currentPhoto = businessPhotos.length > 0 ? businessPhotos[activePhotoIdx] : null;
@@ -46,6 +52,9 @@ export const LogoStudioPanel: React.FC<LogoStudioPanelProps> = ({
   const handleRunAiAnalysis = async () => {
     if (!currentPhoto && !business?.name_ar) return;
     setAnalyzing(true);
+    setAiErrorMessage(null);
+    setAiSuccessMessage(null);
+
     try {
       const photoSrc = typeof currentPhoto === 'string' ? currentPhoto : (currentPhoto as any)?.url || '';
       const result = await analyzeSignboardWithGemini(photoSrc, {
@@ -71,10 +80,49 @@ export const LogoStudioPanel: React.FC<LogoStudioPanelProps> = ({
       if (onApplyAiAnalysis) {
         onApplyAiAnalysis(result);
       }
-    } catch (e) {
-      console.error(e);
+
+      setAiSuccessMessage(`تم التحليل وتوليد الهوية بنجاح باستخدام النموذج الفعّال (${result.modelUsed})`);
+    } catch (e: any) {
+      console.error('AI Analysis failed:', e);
+      setAiErrorMessage(e.message || 'تعذر الاتصال بالذكاء الاصطناعي');
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleGenerateAiImageLogo = async () => {
+    setGeneratingImage(true);
+    setAiErrorMessage(null);
+    setAiSuccessMessage(null);
+
+    try {
+      const bizName = config.businessName || business?.name_ar || 'نشاط تجاري';
+      const cat = business?.category || 'تجارة عامة وخدمات';
+
+      const result = await generateAiLogoImageWithImagen({
+        businessName: bizName,
+        category: cat,
+        englishName: config.englishName,
+        slogan: config.slogan,
+        primaryColor: config.primaryColor,
+        secondaryColor: config.secondaryColor,
+        accentColor: config.accentColor,
+        customPrompt: customImagePrompt.trim() || undefined
+      });
+
+      onChange({
+        ...config,
+        logoMode: 'ai_image',
+        aiGeneratedImageUrl: result.imageUrl,
+        aiPrompt: result.promptUsed
+      });
+
+      setAiSuccessMessage('تم توليد الشعار الاحترافي فائق الدقة بنجاح عبر محرك Google Imagen 3!');
+    } catch (e: any) {
+      console.error('AI Image generation failed:', e);
+      setAiErrorMessage(e.message || 'تعذر توليد الشعار عبر Imagen 3');
+    } finally {
+      setGeneratingImage(false);
     }
   };
 
@@ -85,12 +133,65 @@ export const LogoStudioPanel: React.FC<LogoStudioPanelProps> = ({
       <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-            تحليل الرؤية الحاسوبية (Signboard AI)
+            محركات الذكاء الاصطناعي (Gemini + Imagen 3)
           </span>
           <h3 className="font-bold text-sm text-slate-800 font-['Cairo']">
-            لافتة المحل أو الواجهة الميدانية
+            لافتة المحل وتوليد الشعار
           </h3>
         </div>
+
+        {/* AI Success Feedback */}
+        {aiSuccessMessage && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between">
+            <span className="text-[10px] bg-emerald-200/80 px-2 py-0.5 rounded">نجاح التوليد</span>
+            <div className="flex items-center gap-1.5">
+              <span>{aiSuccessMessage}</span>
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+            </div>
+          </div>
+        )}
+
+        {/* AI Error Alert */}
+        {aiErrorMessage && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs font-bold space-y-1">
+            <div className="flex items-center justify-end gap-1.5 text-red-700">
+              <span>تنبيه الاتصال بالذكاء الاصطناعي</span>
+              <span>⚠️</span>
+            </div>
+            <p className="text-[11px] text-red-600 font-normal">{aiErrorMessage}</p>
+          </div>
+        )}
+
+        {/* Mode Switcher if AI Image exists */}
+        {config.aiGeneratedImageUrl && (
+          <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-600 pr-2">نمط الشعار المعروض:</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onChange({ ...config, logoMode: 'ai_image' })}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                  config.logoMode === 'ai_image'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                ✨ الشعار المولد بـ Imagen 3
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ ...config, logoMode: 'vector_preset' })}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition cursor-pointer ${
+                  config.logoMode === 'vector_preset'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                🎨 الشعار الفيكتور (SVG)
+              </button>
+            </div>
+          </div>
+        )}
 
         {currentPhoto ? (
           <div className="space-y-2">
@@ -136,24 +237,74 @@ export const LogoStudioPanel: React.FC<LogoStudioPanelProps> = ({
           </div>
         )}
 
-        {/* AI Action Button */}
-        <button
-          onClick={handleRunAiAnalysis}
-          disabled={analyzing}
-          className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-100 transition cursor-pointer"
-        >
-          {analyzing ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>جاري تحليل خطوط وألوان اللافتة وتوليد الشعار...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>تحليل اليافطة وتوليد الشعار الفيكتور بالذكاء الاصطناعي</span>
-            </>
-          )}
-        </button>
+        {/* Dual AI Action Buttons */}
+        <div className="space-y-2 pt-1">
+          {/* Main Button: Generate Real AI Image Logo */}
+          <button
+            type="button"
+            onClick={handleGenerateAiImageLogo}
+            disabled={generatingImage || analyzing}
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-orange-100 transition cursor-pointer"
+          >
+            {generatingImage ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>جاري توليد الشعار الفاخر عبر Google Imagen 3...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-amber-100" />
+                <span>✨ توليد شعار فائق الجودة بالذكاء الاصطناعي (Imagen 3)</span>
+              </>
+            )}
+          </button>
+
+          {/* Secondary Button: Vision Analysis from Signboard */}
+          <button
+            type="button"
+            onClick={handleRunAiAnalysis}
+            disabled={analyzing || generatingImage}
+            className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+          >
+            {analyzing ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                <span>جاري تحليل ألوان وخطوط اللافتة بالرؤية الحاسوبية...</span>
+              </>
+            ) : (
+              <>
+                <span>🔍 فك وتحليل ألوان وخطوط اليافطة بالرؤية الحاسوبية</span>
+              </>
+            )}
+          </button>
+
+          {/* Tertiary Action: Direct Logo Upload */}
+          <label className="w-full py-2.5 px-4 bg-white hover:bg-indigo-50/50 text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs">
+            <Upload className="w-4 h-4 text-indigo-600" />
+            <span>📁 أو رفع شعار مخصص من جهازك (PNG / JPG / SVG)</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    onChange({
+                      ...config,
+                      logoMode: 'ai_image',
+                      aiGeneratedImageUrl: reader.result as string
+                    });
+                    setAiSuccessMessage('تم رفع وتطبيق الشعار المخصص بنجاح في كافة القوالب والبراويز!');
+                    setAiErrorMessage(null);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+          </label>
+        </div>
       </div>
 
       {/* Typography & Identity Inputs */}

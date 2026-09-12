@@ -64,6 +64,10 @@ export interface VectorLogoConfig {
   showEstablishedYear: boolean;
   establishedYear: string;
   customSvgPath?: string;
+  logoMode?: 'ai_image' | 'vector_preset';
+  aiGeneratedImageUrl?: string | null;
+  aiPrompt?: string;
+  isGeneratingAiImage?: boolean;
 }
 
 export type FrameFormat = 'square' | 'story' | 'landscape';

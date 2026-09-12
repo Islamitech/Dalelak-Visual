@@ -162,50 +162,90 @@ export function getContainerShapeMarkup(shape: LogoShapeContainer, color: string
 /**
  * Generates pure standalone scalable SVG vector logo string
  */
+/**
+ * Generates pure standalone scalable SVG vector logo string with auto-wrapping and AI support
+ */
 export function generateVectorLogoSvg(config: VectorLogoConfig, size = 500): string {
+  // If an AI-generated image is present, embed it as high-res graphic inside SVG
+  if (config.logoMode === 'ai_image' && config.aiGeneratedImageUrl) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="${size}" height="${size}">
+      <defs>
+        <clipPath id="logoRoundClip">
+          <rect x="0" y="0" width="500" height="500" rx="40" />
+        </clipPath>
+      </defs>
+      <rect width="500" height="500" rx="40" fill="#ffffff" />
+      <image href="${config.aiGeneratedImageUrl}" x="0" y="0" width="500" height="500" preserveAspectRatio="xMidYMid slice" clip-path="url(#logoRoundClip)" />
+    </svg>`;
+  }
+
   const icon = VECTOR_ICONS.find((i) => i.id === config.iconName) || VECTOR_ICONS[0];
   const container = getContainerShapeMarkup(config.shapeContainer, config.primaryColor, config.accentColor);
-
   const fontFamily = config.fontFamily || 'Cairo';
   const hasContainer = config.shapeContainer !== 'none';
 
-  // Determine icon size and text positions based on layout
-  let iconTransform = 'translate(110, 60) scale(3.3)';
-  let titleY = hasContainer ? 195 : 220;
-  let subY = titleY + 28;
-  let englishY = subY + 24;
+  // Smart text wrapping for long Arabic business names
+  const rawName = (config.businessName || 'نشاط دليلك').trim();
+  let nameLines: string[] = [];
+  let nameFontSize = 21;
 
-  if (config.layout === 'horizontal') {
-    iconTransform = 'translate(40, 110) scale(3.2)';
-    titleY = 140;
-    subY = 175;
-    englishY = 205;
-  } else if (config.layout === 'icon_center') {
-    iconTransform = 'translate(105, 80) scale(3.8)';
-    titleY = 230;
-    subY = 262;
-    englishY = 285;
+  if (rawName.length <= 16) {
+    nameLines = [rawName];
+    nameFontSize = 21;
+  } else if (rawName.length <= 30) {
+    const words = rawName.split(' ');
+    const mid = Math.ceil(words.length / 2);
+    nameLines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+    nameFontSize = 16.5;
+  } else {
+    const words = rawName.split(' ');
+    const third = Math.ceil(words.length / 2);
+    nameLines = [words.slice(0, third).join(' '), words.slice(third).join(' ')];
+    nameFontSize = 14.5;
   }
 
-  const englishMarkup = config.showEnglishName && config.englishName ? `
-    <text x="150" y="${englishY}" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="700" font-size="11" letter-spacing="3" fill="${config.secondaryColor}">
-      ${escapeXml(config.englishName.toUpperCase())}
+  // Determine vertical positioning
+  let iconY = hasContainer ? 55 : 45;
+  let iconScale = 3.1;
+  let textBaseY = hasContainer ? 175 : 185;
+
+  if (nameLines.length > 1) {
+    iconY = 48;
+    iconScale = 2.8;
+    textBaseY = 168;
+  }
+
+  const nameMarkup = nameLines.map((line, idx) => `
+    <text x="150" y="${textBaseY + (idx * (nameFontSize * 1.35))}" text-anchor="middle" class="logo-title" font-size="${nameFontSize}" fill="${config.textColor || config.primaryColor}">
+      ${escapeXml(line)}
+    </text>
+  `).join('');
+
+  const afterNameY = textBaseY + (nameLines.length * nameFontSize * 1.35);
+
+  const cleanSlogan = (config.slogan || '').trim();
+  const truncatedSlogan = cleanSlogan.length > 34 ? cleanSlogan.slice(0, 32) + '..' : cleanSlogan;
+  const sloganMarkup = config.showSlogan && truncatedSlogan ? `
+    <text x="150" y="${afterNameY + 18}" text-anchor="middle" font-family="'Tajawal', sans-serif" font-weight="600" font-size="11.5" fill="${config.accentColor || '#d97706'}">
+      ${escapeXml(truncatedSlogan)}
     </text>
   ` : '';
 
-  const sloganMarkup = config.showSlogan && config.slogan ? `
-    <text x="150" y="${subY}" text-anchor="middle" font-family="'Tajawal', sans-serif" font-weight="500" font-size="13" fill="${config.accentColor}">
-      ${escapeXml(config.slogan)}
+  const cleanEnglish = (config.englishName || '').trim();
+  const truncatedEn = cleanEnglish.length > 28 ? cleanEnglish.slice(0, 26) + '..' : cleanEnglish;
+  const englishMarkup = config.showEnglishName && truncatedEn ? `
+    <text x="150" y="${afterNameY + (config.showSlogan && truncatedSlogan ? 36 : 20)}" text-anchor="middle" font-family="'Outfit', sans-serif" font-weight="700" font-size="9.5" letter-spacing="2" fill="${config.secondaryColor || '#0284c7'}">
+      ${escapeXml(truncatedEn.toUpperCase())}
     </text>
   ` : '';
 
   const estMarkup = config.showEstablishedYear && config.establishedYear ? `
-    <g transform="translate(150, 48)">
-      <line x1="-40" y1="0" x2="-14" y2="0" stroke="${config.accentColor}" stroke-width="1.5" />
-      <text x="0" y="4" text-anchor="middle" font-family="'Cairo', sans-serif" font-weight="700" font-size="11" fill="${config.secondaryColor}">
+    <g transform="translate(150, 42)">
+      <line x1="-35" y1="0" x2="-12" y2="0" stroke="${config.accentColor}" stroke-width="1.2" />
+      <text x="0" y="3.5" text-anchor="middle" font-family="'Cairo', sans-serif" font-weight="700" font-size="10" fill="${config.secondaryColor}">
         منذ ${escapeXml(config.establishedYear)}
       </text>
-      <line x1="14" y1="0" x2="40" y2="0" stroke="${config.accentColor}" stroke-width="1.5" />
+      <line x1="12" y1="0" x2="35" y2="0" stroke="${config.accentColor}" stroke-width="1.2" />
     </g>
   ` : '';
 
@@ -224,14 +264,12 @@ export function generateVectorLogoSvg(config: VectorLogoConfig, size = 500): str
   ${estMarkup}
 
   <!-- Vector Icon -->
-  <g transform="${iconTransform}" stroke="${config.primaryColor}" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(112, ${iconY}) scale(${iconScale})" stroke="${config.primaryColor}" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <path d="${icon.svgPath}" />
   </g>
 
-  <!-- Business Name (Arabic) -->
-  <text x="150" y="${titleY}" text-anchor="middle" class="logo-title" font-size="22" fill="${config.textColor || config.primaryColor}">
-    ${escapeXml(config.businessName)}
-  </text>
+  <!-- Business Name (Arabic Auto-Wrapped) -->
+  ${nameMarkup}
 
   <!-- Slogan -->
   ${sloganMarkup}
@@ -253,3 +291,4 @@ function escapeXml(unsafe: string): string {
     }
   });
 }
+

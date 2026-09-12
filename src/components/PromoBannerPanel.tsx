@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Flame, 
   Percent, 
@@ -7,9 +7,11 @@ import {
   Sparkles, 
   Layers, 
   Tag, 
-  Clock 
+  Clock,
+  RefreshCw 
 } from 'lucide-react';
 import { PromoBannerConfig, DalilakBusiness } from '../types';
+import { generateAiPromoOffersWithGemini } from '../services/visualAiService';
 
 interface PromoBannerPanelProps {
   config: PromoBannerConfig;
@@ -49,14 +51,127 @@ export const PromoBannerPanel: React.FC<PromoBannerPanelProps> = ({
   onChange,
   business
 }) => {
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [aiOffers, setAiOffers] = useState<any[]>([]);
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+
+  const handleGenerateAiOffers = async () => {
+    setLoadingAi(true);
+    setAiErrorMessage(null);
+    setAiSuccessMessage(null);
+    try {
+      const { offers, modelUsed } = await generateAiPromoOffersWithGemini(
+        business?.name_ar || 'النشاط التجاري',
+        business?.category || 'عام'
+      );
+      setAiOffers(offers);
+      if (offers.length > 0) {
+        onChange({
+          ...config,
+          headline: offers[0].headline,
+          discountValue: offers[0].discountValue,
+          subtext: offers[0].subtext,
+          callToAction: offers[0].callToAction
+        });
+      }
+      setAiSuccessMessage(`تم ابتكار ${offers.length} عروض بيعية مصرية بنجاح عبر (${modelUsed})`);
+    } catch (e: any) {
+      console.error('Failed to generate AI offers:', e);
+      setAiErrorMessage(e.message || 'تعذر توليد العروض بالذكاء الاصطناعي');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
   return (
     <div className="space-y-6 text-right">
       
+      {/* AI Offer Generator Button */}
+      <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+            Gemini 3.6 Flash
+          </span>
+          <h4 className="font-bold text-xs text-slate-700">توليد عروض بيعية بالذكاء الاصطناعي</h4>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGenerateAiOffers}
+          disabled={loadingAi}
+          className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-orange-100 transition cursor-pointer"
+        >
+          {loadingAi ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>جاري صياغة العروض الحماسية باللهجة المصرية...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4 text-yellow-200" />
+              <span>توليد 4 عروض مصرية مغرية لنشاط ({business?.name_ar || 'المحل'})</span>
+            </>
+          )}
+        </button>
+
+        {aiSuccessMessage && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between">
+            <span className="text-[10px] bg-emerald-200/80 px-2 py-0.5 rounded">Gemini 3.6 Flash</span>
+            <div className="flex items-center gap-1.5">
+              <span>{aiSuccessMessage}</span>
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+            </div>
+          </div>
+        )}
+
+        {aiErrorMessage && (
+          <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs font-bold space-y-1">
+            <div className="flex items-center justify-end gap-1 text-red-700">
+              <span>تنبيه الاتصال</span>
+              <span>⚠️</span>
+            </div>
+            <p className="text-[11px] text-red-600 font-normal">{aiErrorMessage}</p>
+          </div>
+        )}
+
+        {/* AI Generated Offer Cards */}
+        {aiOffers.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <span className="text-[11px] font-bold text-slate-500 block">اضغط على أي عرض لتطبيقه على التصميم فوراً:</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {aiOffers.map((off, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onChange({
+                    ...config,
+                    headline: off.headline,
+                    discountValue: off.discountValue,
+                    subtext: off.subtext,
+                    callToAction: off.callToAction
+                  })}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-100/70 text-right transition cursor-pointer"
+                >
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-mono">
+                      {off.discountValue}
+                    </span>
+                    <span className="text-xs font-bold text-slate-900 truncate">{off.headline}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 line-clamp-2">{off.subtext}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Quick Egyptian Presets */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
           <Sparkles className="w-4 h-4 text-amber-500" />
-          <h4 className="font-bold text-xs text-slate-700">قوالب عروض السوق المصري الجاهزة</h4>
+          <h4 className="font-bold text-xs text-slate-700">قوالب العروض الكلاسيكية الجاهزة</h4>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
