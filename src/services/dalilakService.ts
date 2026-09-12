@@ -25,7 +25,10 @@ export function getServerConfig(): ServerConfig {
   const coreKey = localStorage.getItem(STORAGE_CORE_KEY) || (import.meta as any).env?.VITE_DALILAK_SUPABASE_ANON_KEY || DEFAULT_CORE_KEY;
   const ecosystemUrl = localStorage.getItem(STORAGE_ECO_URL) || (import.meta as any).env?.VITE_ECOSYSTEM_SUPABASE_URL || '';
   const ecosystemKey = localStorage.getItem(STORAGE_ECO_KEY) || (import.meta as any).env?.VITE_ECOSYSTEM_SUPABASE_KEY || '';
-  const geminiKey = localStorage.getItem(STORAGE_GEMINI_KEY) || (import.meta as any).env?.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY || '';
+  const geminiKey = localStorage.getItem(STORAGE_GEMINI_KEY) || 
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || 
+    (typeof process !== 'undefined' && (process as any).env?.GEMINI_API_KEY) || 
+    '';
 
   return {
     coreUrl: coreUrl.trim().replace(/\/+$/, ''),

@@ -20,6 +20,10 @@
   </head>
   <body class="bg-slate-50 text-slate-900 min-h-[100dvh] font-['Tajawal',sans-serif] antialiased selection:bg-indigo-500 selection:text-white overflow-x-hidden">
     <div id="root"></div>
+    <script>
+      window.global = window;
+      window.process = window.process || { env: {} };
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

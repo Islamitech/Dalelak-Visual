@@ -11,6 +11,10 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    define: {
+      'process.env': {},
+      'global': 'window',
+    },
     server: {
       port: 3002,
       host: '0.0.0.0',
